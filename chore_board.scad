@@ -64,7 +64,7 @@ label_size = 5.5;
 // Size of the key symbols under the headings (mm)
 key_size = 5;
 // How far text and symbols stand out from the board face (mm)
-relief = 0.8;
+relief = 0.6;
 
 /* [Board layout] */
 // Space around the edges of the board (mm)
@@ -225,10 +225,11 @@ bumper_inset = 9;
 /* [Slider (print-in-place)] */
 // Gap between the moving slider and the board; raise if stuck, lower if loose (mm)
 clr = 0.3;
-// Length of the sliding carriage (mm)
-car_len = 10;
-// Carriage width where it sits on the print bed; narrower = less contact with the surface behind (mm)
-car_b = 3;
+// Length of the sliding carriage; longer = more grip on the print bed (mm)
+car_len = 12;
+// Carriage width where it sits on the print bed; wider = more grip on the print bed. Can't exceed
+// the gap between the spring-arm slits: 2*(car_w/2 - arm_t - arm_slit) (mm)
+car_b = 3.2;
 // Carriage width at its widest point (mm)
 car_w = 7;
 // Height where the carriage stops widening; at least (car_w - car_b)/2 to keep the flare at 45 degrees (mm)
@@ -255,6 +256,15 @@ nub_r = 1.2;
 nub_x = 3.6;
 // Extra gap at the carriage's first layer, against elephant's foot (mm)
 foot_relief = 0.2;
+// Breakaway tabs: tiny first-layer bridges joining each slider to the board while it prints, so the
+// sliders can't be knocked loose. The first firm push on each knob snaps them; sand any stub smooth.
+slider_tabs = false;
+// Width of each breakaway tab (mm)
+tab_w = 0.8;
+// Thickness of each breakaway tab; at least one first layer (mm)
+tab_h = 0.2;
+// Number of tabs per side of each slider (1 or 2)
+tabs_per_side = 1;
 
 /* [Knob] */
 // Knob diameter; must leave at least min_wall around the token recess (mm)
@@ -377,7 +387,7 @@ tray_mag_high_z = 26;
 // Show sample tokens in the assembled preview
 show_tokens = true;
 // Board colour in the preview, also used for the sliders below the knobs (any OpenSCAD colour name or "#rrggbb")
-board_colour = "LightGray";
+board_colour = "#d0d0d0";
 // Colour of the knobs, from where the cone starts upwards
 knob_colour = "#404040";
 // Colour of the raised text and symbols on the board and the tokens
@@ -388,7 +398,7 @@ token_colours = "MediumSeaGreen, Gold, Crimson, DodgerBlue, DarkOrchid, DarkOran
 tray_colour = "SteelBlue";
 
 /* [Hidden] */
-$fn = 128;
+$fn = 48;
 
 // ================================================================ comma-separated text -> lists
 // The Customizer can't edit lists of text, so the list settings are plain
@@ -473,6 +483,8 @@ assert(!(board_magnets && cord_holes) ||
        "cord holes clash with the top corner magnets - increase cord_hole_inset_x (about 18 clears them) or turn one off");
 assert(!hooks || hook_drop >= hk_lift + hook_wall + 2,
        str("hook_drop must be at least ", hk_lift + hook_wall + 2, " to leave room for the top clip"));
+assert(car_b/2 <= car_w/2 - arm_t - arm_slit + 0.001,
+       str("car_b can't be wider than ", 2*(car_w/2 - arm_t - arm_slit), " - the spring-arm slits would cut into it"));
 assert(neck_len <= car_len, "neck_len can't be longer than car_len");
 assert(car_z2 - car_z1 >= 2*nub - 0.001, "car_z2 - car_z1 must be at least 2*nub for the 45-degree nub ends");
 assert(arm_slit > nub - clr, "arm_slit must be larger than nub - clr");
@@ -830,7 +842,16 @@ module board_fixed() {
 module board() {
     board_fixed();
     for (i=[0:nrows-1], j=[0:ncols-1])
-        translate([col_x(j) + step_x(print_step), row_y(i), 0]) slider();
+        translate([col_x(j) + step_x(print_step), row_y(i), 0]) { slider(); breakaway_tabs(); }
+}
+
+// tiny first-layer bridges from the carriage's underside edge across the gap to the board
+module breakaway_tabs() if (slider_tabs) color(board_colour) {
+    reach = car_b/2 + clr + foot_relief;            // edge of the board's opening at the first layer
+    xs = tabs_per_side >= 2 ? [-1, 1]*(car_len/2 - car_end_chamfer - 1.5) : [0];
+    for (x=xs, sgn=[-1, 1])
+        translate([x - tab_w/2, sgn > 0 ? car_b/2 - 0.3 : -reach - 0.6, 0])
+            cube([tab_w, reach - car_b/2 + 0.9, tab_h]);
 }
 
 module slider_test() {
@@ -840,7 +861,7 @@ module slider_test() {
         translate([-tw/2, -th/2, 0]) chamfered_plate(tw, th, 3);
         cell_cut();
     }
-    translate([step_x(print_step), 0, 0]) slider(test_twist);
+    translate([step_x(print_step), 0, 0]) { slider(test_twist); breakaway_tabs(); }
     // a test token next to the coupon
     translate([tw/2 + token_face_d/2 + 4, 0, 0]) token(L_tokens[0], test_twist, token_colour(0));
 }
@@ -947,7 +968,7 @@ module tray() {
 if (part == "board") {
     board_fixed();
     for (i=[0:nrows-1], j=[0:ncols-1])
-        translate([col_x(j) + step_x(print_step), row_y(i), 0]) slider();
+        translate([col_x(j) + step_x(print_step), row_y(i), 0]) { slider(); breakaway_tabs(); }
     color(board_colour) mount_extras();
 }
 else if (part == "slider_test") slider_test();
@@ -977,7 +998,8 @@ else if (part == "info") {
     if (board_magnets) echo(str("INFO: board magnets    = ", board_mag_d, " x ", board_mag_h, " mm pockets"));
     if (use_bumpers) echo(str("INFO: bumper pads      = ", len(bumper_positions), " x ", bumper_d, " x ", bumper_h,
                               " mm pads, standing ", bumper_proud, " mm proud", bumpers == "auto" ? " (added automatically)" : ""));
-    echo(str("INFO: slider underside = ", car_b, " mm wide, ", car_end_chamfer, " mm end chamfers"));
+    echo(str("INFO: slider underside = ", car_b, " x ", car_len, " mm, ", car_end_chamfer, " mm end chamfers"));
+    echo(str("INFO: breakaway tabs   = ", slider_tabs ? str(2*tabs_per_side, " per slider, ", tab_w, " x ", tab_h, " mm") : "off"));
     if (hooks) echo(str("INFO: door hooks       = for a ", hook_door_t, " mm door (+", hook_tol, " mm), arms ",
                         round(hk_ydt + hook_top_t), " mm long, board top ", hook_drop, " mm below the door top"));
     if (cleat || stand || hooks)

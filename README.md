@@ -13,6 +13,7 @@ A wall or fridge chart for tracking a recurring chore. Each row is a day and eac
 ├── build_stls.py             # Script for generating the STL files
 ├── render_previews.py        # Script for generating preview images
 ├── exports/
+│   ├── board_stand.stl       # A desktop stand for the board
 │   ├── board_twist.stl       # Board with twist-lock token mounts
 │   ├── board_twist_stand.stl # Board with the stand
 │   ├── slider_test_twist.stl # Test piece for the twist-lock slider
@@ -20,6 +21,8 @@ A wall or fridge chart for tracking a recurring chore. Each row is a day and eac
 │   ├── token_heart_twist.stl # Heart-shaped twist-lock token
 │   ├── token_paw_twist.stl   # Paw-shaped twist-lock token
 │   └── tray.stl              # Tray for holding tokens
+├── photos/
+│   └── complete.jpg             # A photo of a fully printed board
 ├── prints/
 │   ├── board_twist_stand.3mf # Project file suitable for printing
 ├── renders/
@@ -45,7 +48,8 @@ A wall or fridge chart for tracking a recurring chore. Each row is a day and eac
 
 ## How it works
 
-**Board.** 178 × 165 mm and 7 mm thick, with a raised title, row and column labels, and a key under each column heading. With the default key (`empty, half, full`), the sliders read left to right as *not done*, *short walk* and *long walk*. Because "not done" is on the left, you can reset a whole column for the new week by running a ruler down it.
+
+**Board.** About 180 × 165 mm and 7 mm thick, with a raised title, row and column labels, and a key under each column heading. With the default key (`empty, half, full`), the sliders read left to right as *not done*, *short walk* and *long walk*. Because "not done" is on the left, you can reset a whole column for the new week by running a ruler down it.
 
 **Sliders.** Each slider is a carriage running in a channel inside the board. In cross-section the carriage is narrow at the bottom, wide in the middle and narrow at the top, so the board traps it from both the front and the back. A 3.4 × 10 mm neck rises through a slot to the knob. Two sprung arms, one on each side and pointing in opposite directions, have nubs that click into a notch at each stop. Every surface is either vertical or at 45°, so nothing needs supports, and there's a 0.3 mm gap between all moving and fixed parts.
 
@@ -76,19 +80,104 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
 - **Sizes adjust automatically:** columns widen and margins grow when needed. Settings that would break the print, such as walls that are too thin or too few key symbols, stop with a message saying what to change.
 - **Preview only:** the preview colours (`knob_colour`, `token_colours`, and so on) only affect what you see in OpenSCAD.
 - **Current settings:** set `part = "info"` to print a summary of the current settings.
+- **Every setting** is listed with its default and description under *All settings* at the end of this file.
+## Building the STLs
+ 
+```
+python3 build_stls.py                      # everything, into ./stl
+python3 build_stls.py tokens               # just the tokens
+python3 build_stls.py --set 'tokens=J, M, P' --set retention=magnet
+python3 build_stls.py -h                   # every STL and every option, with descriptions
+```
+ 
+The script needs OpenSCAD installed. If it isn't on your PATH, set the `OPENSCAD` environment variable to its location. The board takes a few minutes to render, and the other parts take seconds.
+ 
+## Rendering the previews
+ 
+```
+python3 render_previews.py                  # everything: preview.png, previews/, previews/mounting/
+python3 render_previews.py stls mounting    # just some groups (main, stls, mounting)
+python3 render_previews.py --set retention=magnet --set 'tokens=J, M'
+```
+ 
+The script takes the same `--set` overrides as `build_stls.py`, and names each image after the STL it shows.
+ 
+By default the images are high quality: `--scale 2` doubles every image size, `--supersample 2` renders twice as large again and shrinks the result for smooth, anti-aliased edges, and `--fn 96` makes curves smooth. A full run takes several minutes. For quick drafts, use `--scale 1 --supersample 1 --fn 48`. Supersampling needs Pillow (`pip install pillow`); without it, the script renders without anti-aliasing. By default it renders at high resolution with smooth curves (`--fn 96`). If Pillow is installed (`pip install pillow`), it also renders at twice the size and scales down for smooth edges (`--supersample 2`). For quicker drafts, use `--fn 64 --supersample 1`. It needs OpenSCAD. On a Linux machine with no display, install `xvfb` (for example `sudo apt install xvfb`), and the script will use it automatically.
+ 
+## Printing advice
+ 
+**Print the slider test first.** Print-in-place parts depend on your printer's accuracy. Ten minutes on the test coupon will tell you whether the full board will work. Free the slider (see below), then check that it clicks into every stop, the knob feels sturdy, and the token twists on and off.
+ 
+**Material.** PETG is the best choice for the board: the spring arms flex without cracking, and the neck is tougher. PLA works if you prefer it. Tokens and the tray can be any material.
+ 
+**Slicer settings:**
+- **No supports, anywhere.** Turn supports off and check the preview. Supports generated inside the slider channels will weld the sliders solid.
+- **Elephant-foot compensation of about 0.15 mm.** The slider undersides print right next to the board on the first layer, which is where parts most often fuse.
+- **0.2 mm layers.** The slider's key heights are multiples of 0.2 mm.
+- **Line width:** the model assumes 0.42 mm (`line_w`) for its minimum wall checks.
+- **Walls and infill:** 3 walls and 10% infill.
+- **Z-hop on travel, and slower overhangs with full cooling.** The sliders stand on small bases. Z-hop stops the nozzle dragging across them, and slower, well-cooled overhangs stop the knob undersides curling up where the nozzle can catch them.
+- **Build plate:** a smooth plate gives the slider undersides a glossy finish that's kinder to whatever surface they sit against.
 
+**Breakaway tabs (optional).** If sliders come loose during printing, set `slider_tabs = true`. Each slider then gets two tiny first-layer tabs, one on each side, bridging the gap to the board, so the slider borrows the board's grip on the bed while it prints. By default they're 0.8 mm wide and 0.2 mm tall (`tab_w`, `tab_h`). In the slicer, expect each tab to be a single layer of about two thin lines. Elephant-foot compensation also acts on the first layer and narrows them, so check the layer-1 preview: if the tabs are missing or very thin, raise `tab_w` to 1.0–1.2 mm. For a stronger hold, set `tabs_per_side = 2`, though that makes them harder to snap, especially in PETG.  You may want to run a blade along the gap on the back of each tab before pushing it off, to break the first layer cleanly.
+ 
+**Orientation.** Every STL is exported in its print orientation, so don't rotate anything. The board prints face-up, tokens plug-down, the tray upright, the stand base-down, the cleat rail with its backing plate down, and the door-hook arms lying on their sides, which is their strong direction.
+ 
+**Bed size.** When any of the cleat rail, stand or door hooks are switched on, they're laid out beside the board in the same STL. The door-hook arms are about 190 mm long. On a smaller bed, split the parts into separate plates in your slicer, or print the arms diagonally.
+ 
+**Door hooks.** Print the arms in PETG if you can. The bridge over the top of the door is only 2.5 mm thick (`hook_top_t`) so the door still closes. Check the gap between your door and its frame, and raise `hook_top_t` if there's room, which makes the bridge stronger.
+ 
+**Two-colour text (optional).** Add a filament change at **7.0 mm** to print the text and key in a second colour. The knobs rise above that height too, so they'll print in the second colour as well, which looks neat. Twist-lock tokens are sized so their symbols also start at 7.0 mm, so the same change works if you print them on the same plate. The `info` summary shows both heights.
+ 
+**After printing:**
+1. **Free the sliders.** Push each knob firmly left and right, then work it through every stop a few times. If you turned on `slider_tabs` (breakaway tabs that hold the sliders to the board during printing), that first firm push snaps them; sand off any stub left on the underside.
+2. **Fit the magnets.** Glue the corner magnets in with a drop of superglue or epoxy. Polarity doesn't matter for sticking to steel. For magnet tokens, put every knob magnet in the same way up and every token magnet the opposite way.
+3. **Fit bumper pads,** if you're using them. Stick them into their pockets.
+## Troubleshooting and tuning
+ 
+| Problem | Setting to change |
+|---|---|
+| Slider fused or stiff | Raise `clr` (try 0.35–0.4), and check elephant-foot compensation |
+| Sliders come loose during printing | Turn on `slider_tabs`. Z-hop on travel and slower overhangs also help |
+| Breakaway tabs hard to snap | Keep `tabs_per_side = 1` and `tab_h = 0.2`; lower `tab_w` slightly, or run a craft knife along the gap on the back before pushing |
+| Breakaway tabs missing in the slicer | Raise `tab_w` to 1.0–1.2 (elephant-foot compensation thins them on the first layer) |
+| Slider loose or rattly | Lower `clr` (try 0.25) |
+| Click too weak | Raise `nub` slightly, or `arm_t` to 1.4 |
+| Click too stiff | Lower `nub` slightly |
+| Twist token too tight | Set `tw_squeeze` negative (for example −0.1) |
+| Twist token works loose | Raise `tw_squeeze` (0.05–0.1) |
+| Token plug tight in the recess | Raise `fit` |
+| Board needs to sit further off the surface | Turn on `bumpers`, or lower `board_mag_h` so the magnets stand further proud |
+| Door hook too tight or too loose on the door | Set `hook_door_t` to your door's thickness; `hook_tol` adds the extra room |
+| Door won't close with the hooks on | Lower `hook_top_t` to fit the gap between the door and frame |
+ 
+## Care
+ 
+Wipe the board clean with a damp cloth. Keep it away from heat sources, especially if it's printed in PLA, which softens at around 55 °C.
+ 
+## All settings
+ 
+Every setting in `chore_board.scad`, grouped as they appear in OpenSCAD's Customizer, with its default value and a short description. Change them in the Customizer, in the file, or with `--set NAME=VALUE` when running `build_stls.py` or `render_previews.py`. `python3 build_stls.py -h` prints the same list.
+ 
 ```text
+  [Output]
+    part = "assembled"   choices: assembled, board, slider_test, token, tray, info
+        Component to render: assembled preview, board, slider test, one token, tray, or
+        info for the build script
+    token_index = 0
+        Which entry of 'tokens' to render when part = "token" (0 = first)
+ 
   [Title and labels]
     title = "Dog walking"
         Title text across the top of the board
-    row_header = "Day"
+    row_header = ""
         Heading above the row labels ("" for none)
     row_labels = "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
         Row labels, comma separated; the number of entries sets the number of rows
     col_labels = "AM, PM, Night"
         Slider column labels, comma separated; the number of entries sets the number of
         columns
-
+ 
   [Slider steps]
     key_symbols = "empty, half, full"
         Key symbols under each heading, comma separated, left to right. Each symbol is
@@ -99,7 +188,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Step the sliders are printed in (0 = leftmost, normally the "not done" step)
     step_pitch = 10
         Distance between neighbouring stops (mm)
-
+ 
   [Text]
     font = "Liberation Sans:style=Bold"
         Font for all text (any installed font, e.g. "Liberation Sans:style=Bold")
@@ -109,9 +198,9 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Row and column label text height (mm)
     key_size = 5
         Size of the key symbols under the headings (mm)
-    relief = 0.8
+    relief = 0.6
         How far text and symbols stand out from the board face (mm)
-
+ 
   [Board layout]
     margin = 8
         Space around the edges of the board (mm)
@@ -132,7 +221,9 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Board thickness; houses the slider channels (mm)
     back_chamfer = 1.0
         45-degree chamfer on the rear edge of the board (mm)
-
+    front_chamfer = 1.0
+        45-degree chamfer on the front (top) outside edge of the board (mm)
+ 
   [Mounting: magnets]
     board_magnets = true
         Add magnet pockets in the four rear corners of the board
@@ -145,7 +236,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         on it (mm)
     board_mag_inset = 9
         Distance from the board edges to the pocket centres (mm)
-
+ 
   [Mounting: keyhole slots]
     keyholes = false
         Two keyhole slots in the back of the title band, to hang the board on screws
@@ -161,7 +252,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Total keyhole depth into the back of the board (mm)
     keyhole_lip = 2.0
         Thickness of the lip the screw head hooks behind (mm)
-
+ 
   [Mounting: adhesive strips]
     strips = false
         Shallow pockets in the four back corners for removable picture-hanging strips
@@ -171,7 +262,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Strip pocket width (mm)
     strip_depth = 0.8
         Strip pocket depth (mm)
-
+ 
   [Mounting: French cleat]
     cleat = false
         Angled groove across the back of the title band; the matching wall rail is added
@@ -191,17 +282,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Wall rail backing plate height below the lip, for the screws (mm)
     cleat_screw_d = 4.5
         Wall rail screw hole diameter (mm)
-
-  [Mounting: cord holes]
-    cord_holes = false
-        Two holes near the top corners for a hanging cord or ribbon
-    cord_hole_d = 4
-        Cord hole diameter (mm)
-    cord_hole_inset_x = 18
-        Distance from the side edges to the holes (mm)
-    cord_hole_inset_y = 10
-        Distance from the top edge to the holes (mm)
-
+ 
   [Mounting: stand]
     stand = false
         Add a desk/shelf stand (printed beside the board in the board STL) that the
@@ -225,7 +306,17 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
     stand_pads = true
         Pockets underneath for bumper pads (bumper_d x bumper_h) so the stand doesn't
         scratch furniture
-
+ 
+  [Mounting: cord holes]
+    cord_holes = false
+        Two holes near the top corners for a hanging cord or ribbon
+    cord_hole_d = 4
+        Cord hole diameter (mm)
+    cord_hole_inset_x = 18
+        Distance from the side edges to the holes (mm)
+    cord_hole_inset_y = 10
+        Distance from the top edge to the holes (mm)
+ 
   [Mounting: door hooks]
     hooks = false
         Add two over-door hanger arms (printed beside the board in the board STL). Each
@@ -256,7 +347,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Ribs on the arm hold the board this far off it, so the sliders don't drag (mm)
     hook_chamfer = 0.8
         45-degree chamfer on the arm edges (mm)
-
+ 
   [Mounting: bumper pads]
     bumpers = "auto"   choices: auto, on, off
         Pockets in the back for self-adhesive felt or silicone bumper pads. They stand
@@ -275,15 +366,16 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Clearance around each pad in its pocket (mm)
     bumper_inset = 9
         Distance from the board edges to the corner pads (mm)
-
+ 
   [Slider (print-in-place)]
     clr = 0.3
         Gap between the moving slider and the board; raise if stuck, lower if loose (mm)
-    car_len = 10
-        Length of the sliding carriage (mm)
-    car_b = 3
-        Carriage width where it sits on the print bed; narrower = less contact with the
-        surface behind (mm)
+    car_len = 12
+        Length of the sliding carriage; longer = more grip on the print bed (mm)
+    car_b = 3.2
+        Carriage width where it sits on the print bed; wider = more grip on the print
+        bed. Can't exceed the gap between the spring-arm slits: 2*(car_w/2 - arm_t -
+        arm_slit) (mm)
     car_w = 7
         Carriage width at its widest point (mm)
     car_z1 = 2.0
@@ -313,7 +405,17 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Position of the nubs along the carriage (mm)
     foot_relief = 0.2
         Extra gap at the carriage's first layer, against elephant's foot (mm)
-
+    slider_tabs = false
+        Breakaway tabs: tiny first-layer bridges joining each slider to the board while
+        it prints, so the sliders can't be knocked loose. The first firm push on each
+        knob snaps them; sand any stub smooth.
+    tab_w = 0.8
+        Width of each breakaway tab (mm)
+    tab_h = 0.2
+        Thickness of each breakaway tab; at least one first layer (mm)
+    tabs_per_side = 1
+        Number of tabs per side of each slider (1 or 2)
+ 
   [Knob]
     knob_d = 13
         Knob diameter; must leave at least min_wall around the token recess (mm)
@@ -324,7 +426,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Gap between the knob underside and the board face (mm)
     knob_top_h = 3.4
         Height of the straight part of the knob above its 45-degree underside (mm)
-
+ 
   [Tokens]
     tokens = "paw, bone, heart"
         Tokens, comma separated, one STL each: star, heart, paw, bone, moon, triangle,
@@ -335,8 +437,10 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Token holding method for the slider test ("same" follows retention)
     token_face_d = 13
         Token face diameter; overhangs the knob for grip (mm)
-    face_flat = 1.6
-        Height of the straight edge of the token face; taller gives more to grip (mm)
+    face_flat = 1.5
+        Height of the straight edge of the token face; taller gives more to grip. The
+        default makes twist tokens' symbols start at the same height as the board text
+        (plate_t), so one filament change does both (mm)
     grip_count = 18
         Number of grip flutes around the token edge (0 = smooth)
     grip_depth = 0.6
@@ -349,7 +453,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Size of the symbol on the token face (mm)
     fit = 0.15
         Radial clearance of the token plug in the knob; raise if tight (mm)
-
+ 
   [Token magnets (retention = magnet)]
     m_recess_d = 9.4
         Diameter of the token recess in the knob top (mm)
@@ -359,7 +463,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Token/knob magnet pocket diameter: magnet + clearance (mm)
     tmag_h = 1.1
         Token/knob magnet pocket depth: magnet + clearance (mm)
-
+ 
   [Token twist lock (retention = twist)]
     tw_mouth_d = 8.0
         Diameter of the knob opening the token plug fits through (mm)
@@ -386,7 +490,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Clearance under the lugs (mm)
     tw_turn_clr = 5
         Extra turn allowed past the locked position before the hard stop (degrees)
-
+ 
   [Token tray]
     tray_w = 55
         Tray outside width (mm)
@@ -416,7 +520,7 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Number of compartments (1 = no dividers)
     tray_divider_t = 1.6
         Divider thickness (mm)
-
+ 
   [Tray magnets]
     tray_mag_d = 10.2
         Tray magnet pocket diameter: magnet + clearance (mm)
@@ -432,27 +536,22 @@ Open `chore_board.scad` in OpenSCAD and use **Window → Customizer**, or edit t
         Height of the lower row of pockets (mm)
     tray_mag_high_z = 26
         Height of the upper row of pockets (mm)
-```
-
-## Building the STLs
-
-### From OpenSCAD
-Open `chore_board.scad` in OpenSCAD, set the part in the **Customizer**, options for printing are, board, slider_test, token, tray.  Then render and export the STL.  For the tokens you'll need to step through each token shape in the Customizer and export each one by incrementing the token_index value.
-
-### Using the python script
-
-```
-  python3 build_stls.py                                                                # build everything
-  python3 build_stls.py tokens                                                         # just the tokens
-  python3 build_stls.py --set retention=magnet                                         # magnet board + tokens              
-  python3 build_stls.py tokens --set 'tokens=A, B, C, blank'                           # one of each of the tokens
-  python3 build_stls.py --set 'title=Feed the cat' \
-      --set 'key_symbols=empty, full' --set print_step=0 \
-      --set 'row_labels=Mon, Tue, Wed, Thu, Fri' --set 'col_labels=Breakfast, Dinner'  # change the title, key and labels
-  python3 build_stls.py --set keyholes=true --set board_magnets=false                  # board with keyholes, no magnets
-  python3 build_stls.py --set stand=true                                               # board STL includes the stand
-  python3 build_stls.py --set hooks=true --set hook_door_t=35                          # adds over-door hanger arms
-  python3 build_stls.py --options tray                                                 # options for one STL
+ 
+  [Preview colours]
+    show_tokens = true
+        Show sample tokens in the assembled preview
+    board_colour = "#d0d0d0"
+        Board colour in the preview, also used for the sliders below the knobs (any
+        OpenSCAD colour name or "#rrggbb")
+    knob_colour = "#404040"
+        Colour of the knobs, from where the cone starts upwards
+    text_colour = "#404040"
+        Colour of the raised text and symbols on the board and the tokens
+    token_colours = "MediumSeaGreen, Gold, Crimson, DodgerBlue, DarkOrchid, DarkOrange"
+        Token colours, comma separated, one per token in the same order (repeats if
+        shorter)
+    tray_colour = "SteelBlue"
+        Colour of the token tray in the preview
 ```
 
 The script needs OpenSCAD installed. If it isn't on your PATH, set the `OPENSCAD` environment variable to its location. The board takes a few minutes to render, and the other parts take seconds.
