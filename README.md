@@ -20,6 +20,8 @@ A wall or fridge chart for tracking a recurring chore. Each row is a day and eac
 │   ├── token_heart_twist.stl # Heart-shaped twist-lock token
 │   ├── token_paw_twist.stl   # Paw-shaped twist-lock token
 │   └── tray.stl              # Tray for holding tokens
+├── prints/
+│   ├── board_twist_stand.3mf # Project file suitable for printing
 ├── renders/
 │   ├── preview.png           # Rendered preview of the board
 │   ├── board_twist.png
@@ -38,7 +40,7 @@ A wall or fridge chart for tracking a recurring chore. Each row is a day and eac
 │       ├── keyholes.png
 │       ├── magnets.png
 │       └── stand.png
-├── LICENSE                  # Project license
+├── LICENSE                   # Project license
 ```
 
 ## How it works
